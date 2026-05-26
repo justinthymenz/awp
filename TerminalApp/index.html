@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AWP Sovereign Trader</title>
+    <!-- Tailwind CSS Engine -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              canvas: '#050505',
+              surface: '#121212',
+              sovereign: '#C5A059',
+              sovereignHover: '#d4af37',
+            }
+          }
+        }
+      }
+    </script>
+  </head>
+  <body class="bg-[#050505] text-[#e0e0e0] antialiased">
+    <div id="root"></div>
+    <script type="module" src="/main.tsx"></script>
+  </body>
+</html>
