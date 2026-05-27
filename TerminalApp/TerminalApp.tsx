@@ -14,9 +14,9 @@ export default function TerminalApp() {
   const [warningAlert, setWarningAlert] = useState('');
   const [totalBankroll] = useState(2500); // Anchored at 5 x $500 groups
   
-  // 1-15 Matrix State (Starting with base $1.00 prices)
+  // 1-15 Matrix State
   const [runners, setRunners] = useState(
-    Array.from({ length: 15 }, (_, i) => ({ id: i + 1, price: 1.00, stake: 0, status: 'AWAITING DATA' }))
+    Array.from({ length: 15 }, (_, i) => ({ id: i + 1, price: '1.00', stake: 0, status: 'AWAITING DATA' }))
   );
 
   // Manual Timer Countdown Logic
@@ -34,39 +34,52 @@ export default function TerminalApp() {
     return `${m}:${s}`;
   };
 
-  // $0.10 Stepper Logic
-  const handlePriceChange = (id, delta) => {
+  // Manual Typing Handler
+  const handleManualPrice = (id, newPrice) => {
     setRunners(runners.map(r => {
       if (r.id === id) {
-        const newPrice = Math.max(1.00, +(r.price + delta).toFixed(2));
         return { ...r, price: newPrice };
       }
       return r;
     }));
   };
 
-  // Core Math & Layman-Friendly Validation
+  // $0.10 Stepper Logic
+  const handlePriceStep = (id, delta) => {
+    setRunners(runners.map(r => {
+      if (r.id === id) {
+        const currentPrice = Number(r.price) || 1.00;
+        const newPrice = Math.max(1.00, +(currentPrice + delta).toFixed(2));
+        return { ...r, price: newPrice.toFixed(2) };
+      }
+      return r;
+    }));
+  };
+
+  // Core Math, Rounding up, & Stop-Loss
   const calculateStakes = () => {
     // Layman Error Alert 1: Check for valid market prices
-    const hasValidPrice = runners.some(r => r.price > 2.00);
+    const hasValidPrice = runners.some(r => Number(r.price) > 2.00);
     if (!hasValidPrice) {
-      setWarningAlert('Hold on! You need at least one horse priced above $2.00 to calculate a profitable spread.');
+      setWarningAlert('Hold on! You need at least one horse priced above $2.00 to process the investment matrix.');
       return;
     }
     setWarningAlert('');
 
     // Coverage Logic & Rule 4 Stop-Loss
     const updatedRunners = runners.map(r => {
-      if (r.price > 2.00) {
-        const impliedProb = 1 / r.price;
+      const numericPrice = Number(r.price);
+      if (numericPrice > 2.00) {
+        const impliedProb = 1 / numericPrice;
         
         // No Profit Margin Alert
         if (impliedProb >= 1.0) {
           return { ...r, status: 'AVOID - NO PROFIT MARGIN', stake: 0 };
         }
         
-        // Calculate Target-Profit Allocation (Mock dynamic math applied)
-        const requiredStake = +(100 / r.price).toFixed(2);
+        // Calculate Target-Profit Allocation and Round UP to nearest whole dollar
+        const rawStake = 100 / numericPrice; // Core spread allocation logic
+        const requiredStake = Math.ceil(rawStake); // Mathematical whole dollar round up
         
         // Rule 4: 5% Stop Loss Check (5% of $500 group bankroll = $25)
         if (requiredStake > 25) {
@@ -121,7 +134,7 @@ export default function TerminalApp() {
                 placeholder="e.g. 4"
                 value={raceNumber}
                 onChange={(e) => setRaceNumber(e.target.value)}
-                className="bg-[#050505] border border-[#333] text-white px-4 py-2 rounded-lg focus:outline-none focus:border-[#C5A059] w-32"
+                className="bg-[#050505] border border-[#333] text-white px-4 py-2 rounded-lg focus:outline-none focus:border-[#C5A059] w-32 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
           </div>
@@ -171,14 +184,15 @@ export default function TerminalApp() {
                   <td className="py-3 px-4 font-mono text-lg text-gray-300">#{runner.id}</td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => handlePriceChange(runner.id, -0.10)} className="w-8 h-8 bg-[#333] hover:bg-[#444] rounded flex items-center justify-center font-bold">-</button>
+                      <button onClick={() => handlePriceStep(runner.id, -0.10)} className="w-8 h-8 bg-[#333] hover:bg-[#444] rounded flex items-center justify-center font-bold">-</button>
                       <input 
                         type="number" 
-                        value={runner.price.toFixed(2)}
-                        readOnly
-                        className="w-20 bg-[#050505] border border-[#444] text-center py-1 rounded font-mono text-white"
+                        step="any"
+                        value={runner.price}
+                        onChange={(e) => handleManualPrice(runner.id, e.target.value)}
+                        className="w-20 bg-[#050505] border border-[#444] text-center py-1 rounded font-mono text-white focus:outline-none focus:border-[#C5A059] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
-                      <button onClick={() => handlePriceChange(runner.id, 0.10)} className="w-8 h-8 bg-[#333] hover:bg-[#444] rounded flex items-center justify-center font-bold">+</button>
+                      <button onClick={() => handlePriceStep(runner.id, 0.10)} className="w-8 h-8 bg-[#333] hover:bg-[#444] rounded flex items-center justify-center font-bold">+</button>
                     </div>
                   </td>
                   <td className={`py-3 px-4 text-xs font-bold tracking-wider ${
@@ -206,12 +220,12 @@ export default function TerminalApp() {
           <div className="flex gap-4 w-full md:w-auto">
             <button 
               onClick={calculateStakes}
-              className="flex-1 md:flex-none bg-[#C5A059] hover:bg-[#d4af37] text-black px-8 py-3 rounded-lg font-bold tracking-wide transition-colors"
+              className="flex-1 md:flex-none bg-[#C5A059] hover:bg-[#d4af37] text-black px-8 py-3 rounded-lg font-bold tracking-wide transition-colors uppercase"
             >
-              FIND MY EDGE
+              Process Investment
             </button>
             <button 
-              className="flex-1 md:flex-none bg-green-600 hover:bg-green-500 text-white px-8 py-3 rounded-lg font-bold tracking-wide transition-colors"
+              className="flex-1 md:flex-none bg-green-600 hover:bg-green-500 text-white px-8 py-3 rounded-lg font-bold tracking-wide transition-colors uppercase"
             >
               LOCK IN STAKES
             </button>
